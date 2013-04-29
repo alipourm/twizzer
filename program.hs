@@ -1,4 +1,5 @@
 import Control.Monad.State
+import System.IO
 
 {-
  -
@@ -18,6 +19,7 @@ import Control.Monad.State
 type Twize = (String, String)
 
 --main function for program entrance
+main :: IO ()
 main = loop []
 
 --loop function is used to parse command, and do state transformation
@@ -30,8 +32,11 @@ loop state = do
 				let (result, newState) = runState (submit argu1 argu2) state
 				putStrLn . show $ newState
 				loop newState
-			else
-				putStrLn "stop"
+			else do
+				outh <- openFile "output.txt" WriteMode
+				hPutStrLn outh (show state)
+				hClose outh
+				putStrLn "store state into output.txt"
 
 
 --parse function is used to parse command-line
