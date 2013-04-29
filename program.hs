@@ -13,6 +13,7 @@ import Control.Monad.State
 --1, cope this file into a directory
 --2, compile this file using command under terminal: ghc --make program.hs
 --3, type in terminal: ./program
+--4, Currently, this program can only store twizes, use command: submit name solution
 
 type Twize = (String, String)
 
