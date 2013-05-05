@@ -1,0 +1,3 @@
+## This is the file for administrative configuration.
+## It should contain administrator's name and password
+## also other setttings
