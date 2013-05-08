@@ -26,17 +26,21 @@ main = do
 
 execute :: [String] -> IO ()
 execute all@(command:argus)
-				| command == "setup" = setUpHandler argus
-				| command == "submitTwizze" = twizzeHandler argus
-				| command == "submitReview" = reviewHandler argus
+				| command == "setup" = setUpHandler argus -- admin 
+				| command == "nextStep" = -- admin
+				| command == "showTwizze" = showTwizze-- user run this command after admin has set up the twizze homework
+				| command == "submitTwizze" = twizzeHandler argus -- user wants to submit their solution
+				| command == "submitReview" = reviewHandler argus -- user
 				| otherwise = putStrLn "shit !!!"
 
 
 --administrator sets up twizzer system
---arguments should follow: deadline randomSeed
+--arguments should follow: deadline randomSeed twizzefileName
 --there should be a configuration file called "config.txt", which stores dealline for current twizze, and students names.
 --fisrt, setUpHandler reads names from config.txt, and assigns buddies for each student, and store buddies information in another file,
 --called buddy.txt
+--
+--
 setUpHandler :: [String] -> IO ()
 setUpHandler argus = do
 						inh <- openFile "config.txt" ReadMode
@@ -120,6 +124,17 @@ getUID = getEffectiveUserName
 --whether current user is registed in this class
 isRegisted :: String -> Bool
 isRegisted uid = 
+
+
+showTwizze :: IO ()
+showTwizze = do
+			if (not isRegisted(getUID))
+			then putStrLn "sorry"
+			else do
+				if (not existFile(twizzefileName))
+				then putStrLn "sorry"
+				else putStrLn twizzefile
+
 
 passDeadline :: IO Bool
 passDeadline = do
