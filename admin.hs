@@ -1,9 +1,0 @@
---This file is for administrator module
---basiclly, it is a tool for administrator to control server state.
---It contains a bunch of function call to server using HttpRequest
---
---should take a look at HTTP package in Haskell
---
---It has several functions:
---1, setup twizzer
---2, runNextState
