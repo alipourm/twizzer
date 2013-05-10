@@ -11,5 +11,6 @@ For administrator:
 For students:
 When students want to submit twizzes homework or see reviews, he or she needs to go to administrator's home directory to execute the program. ( I think we need a better way to implement this. Going to administrator's home directory whenever students want to do stuff is really tedious and inefficient. Maybe we can make a sysbolic link in each students home directory ? or maybe put our executable program into /usr/local/bin directory ? but this needs root access, which, unfortunately, we do do have.
 
-1, when stduents want to submit their twizzes, they need to go to administrator's home directory to execute the program(I think we need a better way to do this), and type command "submittwizze" and followed by a path, which is the twizzer file in students directory.
-2, 
+Basiclly our program is a bunch of function calls.
+Some function calls need to verify user's identity. For example, students can not call "setup" function, which is supposed to be called by administrator.
+
