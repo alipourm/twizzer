@@ -2,3 +2,5 @@ program
 program.hi
 program.o
 output.txt
+*.swp
+test.hs
