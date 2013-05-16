@@ -6,70 +6,85 @@
 -}
 
 import System.IO
+import System.Directory
 import System.Posix
+--import System.Posix.Files
 import System.Locale
 import System.Time
+--import System.Random  --not find Random module in Haskell 7.2.1
 import Data.Time
 import Data.Time.Format
 import Data.Time.Clock
-import System.Random
 
-data Handler = 
+--data Handler = 
 
 main :: IO ()
 main = do
 		line <- getLine
 		let commands = parseCommand line
-		execute commands
-		main
+		if commands !! 0 == "stop"
+		then return ()
+		else do
+				execute commands
+				main
 
 
 execute :: [String] -> IO ()
 execute all@(command:argus)
-				| command == "setup" = setUpHandler argus -- admin 
-				| command == "nextStep" = -- admin
-				| command == "showTwizze" = showTwizze-- user run this command after admin has set up the twizze homework
-				| command == "submitTwizze" = twizzeHandler argus -- user wants to submit their solution
-				| command == "submitReview" = reviewHandler argus -- user
-				| otherwise = putStrLn "shit !!!"
+				| command == "setUp" = setUpHandler argus -- admin 
+				| command == "nextStep" = putStrLn "nextStep" -- admin
+				| command == "showTwizze" = putStrLn "showTwizz" --showTwizze-- user run this command after admin has set up the twizze homework
+				| command == "submitTwizze" = twizzeHandler argus--putStrLn "submitTwizz" --twizzeHandler argus -- user wants to submit their solution
+				| command == "submitReview" = putStrLn "submitReview" --reviewHandler argus -- user
+				| otherwise = putStrLn "wrong command, please try again"
 
+
+
+parseCommand :: String -> [String]
+parseCommand commands = words commands
 
 --administrator sets up twizzer system
 --arguments should follow: deadline randomSeed twizzefileName
---there should be a configuration file called "config.txt", which stores dealline for current twizze, and students names.
---fisrt, setUpHandler reads names from config.txt, and assigns buddies for each student, and store buddies information in another file,
+--there should be a configuration file called "names.txt", which stores dealline for current twizze, and students names.
+--fisrt, setUpHandler reads names from names.txt, and assigns buddies for each student, and store buddies information in another file,
 --called buddy.txt
 --
 --
 setUpHandler :: [String] -> IO ()
 setUpHandler argus = do
-						inh <- openFile "config.txt" ReadMode
-						outh <- openFile "buddy.txt" WriteMode
+						inh <- openFile "twizze/names" ReadMode
+						outh <- openFile "twizze/buddy" WriteMode
 						names <- readName inh [] --read all students names from file, and store names in varibal names, which is a list of string
-						let randomNames = shuffleList (mkStdGen 33) names -- shuffle name list, making it randomly.
-						_ <- writeBuddies outh randomNames -- write those shuffled names into a file.
+						--let randomNames = shuffleList (mkStdGen 33) names -- shuffle name list, making it randomly.
+						--_ <- writeBuddies outh randomNames -- write those shuffled names into a file.
+						_ <- writeBuddies outh names
 						hClose inh
 						hClose outh
 
 
 --readName function reads all students names from input handler, it recursively call itself.
-readName :: Handler -> [String] -> IO [String]
+readName :: Handle -> [String] -> IO [String]
 readName inh names = do
 				ineof <- hIsEOF inh
 				if ineof
 				then return names
-				else do name <- hGenLine inh
-						readName inh name:names
+				else do
+						name <- hGetLine inh
+						System.Directory.createDirectory ("twizze" ++ "/" ++ name) --create a folder for every student.
+						setFileMode ("twizze/" ++ name) 0o757
+						readName inh (name:names)
 				
 
 -- write buddy information into a file
-writeBuddies :: Handler -> [String] -> pos -> IO ()
-writeBuddies outh [] _ = return ()
-writeBuddies outh (n:names) i = do
-								hPutStrLn outh n ++ " " 
+writeBuddies :: Handle -> [String] -> IO ()
+writeBuddies outh [] = return ()
+writeBuddies outh (n:names) = do
+								hPutStrLn outh (n ++ " " )
 								writeBuddies outh names
 
-writeLoop :: Handler -> Handler -> IO ()
+{-
+
+writeLoop :: Handle -> Handle -> IO ()
 writeLoop inh outh = do
 						ineof <- hIsEOF inh
 						if ineof
@@ -78,52 +93,67 @@ writeLoop inh outh = do
 								hPutStrLn outh 
 						
 
+-}
+
 --client submit twizze, argu1 should be path
 twizzeHandler :: [String] -> IO ()
 twizzeHandler argus = do
 						uid <- getUID
-						if (not (isRegisted uid))
+						if (not . isRegisted $ uid)
 						then putStrLn "sorry, you are not registed in this class."
 						else do
-								if(not curState == Task)
+								if(not (curState == "task"))
 								then putStrLn "sorry, you can not submit twizze now."
 								else do
-										if(not containFolder(uid))
-										then --create folder
+										if(alreadySubmitted uid)
+										then return ()--change old twizze's name to twizzeX_old.hs
 										else do
-												if(invalidPath . head $ argus)
-												then putStrLn "sorry, invalid path."
-												else do
-														if(alreadySubmitted())
-														then --change old twizze's name to twizzeX_old.hs
-														else do
-																submittwizze (head agus)
-																putStrLn "upload successfully"
+												submittwizze . head $ argus
+												putStrLn "upload successfully"
 
 
-reviewHandler :: [String] -> IO ()
-reviewHandler argus = do
 
---xxxHandler :: IO ()
-
--- check whether there is already a folder for this user under admin's directory
-containFolder :: String -> Bool
-containFolder uid = 
-
--- check whether path for twizze are valid
-invalidPath :: String -> Bool
-invalidPath path = --
-
-parseCommand :: String -> [String]
-parseCommand commandLine = 
 
 --call system function
 getUID :: IO String
 getUID = getEffectiveUserName
 
 --whether current user is registed in this class
+--need to be refactored
 isRegisted :: String -> Bool
-isRegisted uid = 
+isRegisted uid = True
+
+--check whether currentet state allows students to submit their twizzes.
+--need to be refactored
+curState = "task"
+
+alreadySubmitted :: String -> Bool
+alreadySubmitted uid = False
+
+-- user need use this command to submit their twizzer homeworks
+submittwizze :: String -> IO ()
+submittwizze path = do
+					uid <- getUID
+					copyFile path ("../../q/qiq/twizze/" ++ uid ++ "/twizze1.hs")
+					setFileMode ("../../q/qiq/twizze/" ++ uid ++ "/twizze1.hs") 0o755
+					putStrLn "submit homework successfully"
+				--need to copy twizze file from student directory to administrator's directory
+				
+
+
+
+{--
+reviewHandler :: [String] -> IO ()
+reviewHandler argus = do
+
+--xxxHandler :: IO ()
+
+
+
+parseCommand :: String -> [String]
+parseCommand commandLine = 
+
+
 
 
 showTwizze :: IO ()
@@ -147,15 +177,21 @@ passDeadline = do
 				else putStrLn "true"
 
 
-
+--}
 -- this function is used to shuffle a list randomly
+{-- 
 shuffleList :: StdGen -> [a] -> [a]
 shuffleList _ []   = []
-shuffleList gen xs = let (n,newGen) = randomR (0,length xs -1) gen
-						front = xs !! n
+shuffleList gen xs = front : shuffleList newGen (take n xs ++ drop (n + 1) xs)
+						where
+							(n,newGen) = randomR (0, length xs - 1) gen
+							front = (xs !! n)
+
+
+let (n,newGen) = randomR (0,length xs - 1) gen
+					 					front = xs !! n
 						in  front : randPerm newGen (take n xs ++ drop (n+1) xs)
 
--- user need use this command to submit their twizzer homeworks
-submittwizze :: String -> IO ()
-submittwizze path = do
-				--need to copy twizze file from student directory to administrator's directory
+--}
+
+
