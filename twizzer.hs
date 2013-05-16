@@ -11,7 +11,7 @@ import System.Posix
 --import System.Posix.Files
 import System.Locale
 import System.Time
---import System.Random  --not find Random module in Haskell 7.2.1
+--import System.Random  --not find Random module in Haskell 7.4.1
 import Data.Time
 import Data.Time.Format
 import Data.Time.Clock
@@ -54,11 +54,20 @@ setUpHandler :: [String] -> IO ()
 setUpHandler argus = do
 						inh <- openFile "twizze/names" ReadMode
 						outh <- openFile "twizze/buddy" WriteMode
+						createConfig (head argus)
 						names <- readName inh [] --read all students names from file, and store names in varibal names, which is a list of string
-						--let randomNames = shuffleList (mkStdGen 33) names -- shuffle name list, making it randomly.
-						--_ <- writeBuddies outh randomNames -- write those shuffled names into a file.
+						randomNames <- shuffleList names -- shuffle name list, making it randomly.
+						_ <- writeBuddies outh randomNames -- write those shuffled names into a file.
 						_ <- writeBuddies outh names
 						hClose inh
+						hClose outh
+
+
+createConfig :: String -> IO ()
+createConfig deadline = do
+						outh <- openFile "config" WriteMode
+						hPutStrLn outh deadline
+						hPutStrLn outh "task"
 						hClose outh
 
 
@@ -179,19 +188,21 @@ passDeadline = do
 
 --}
 -- this function is used to shuffle a list randomly
-{-- 
-shuffleList :: StdGen -> [a] -> [a]
-shuffleList _ []   = []
-shuffleList gen xs = front : shuffleList newGen (take n xs ++ drop (n + 1) xs)
-						where
-							(n,newGen) = randomR (0, length xs - 1) gen
-							front = (xs !! n)
+shuffleList :: [a] -> IO [a]
+shuffleList [i] = return [i]
+shuffleList xs = do
+					ran <- getRandom (length xs - 1)
+					let front = (xs !! ran)
+					list <- shuffleList (take ran xs ++ drop (ran + 1) xs)
+					return (front : list)
+
+  
 
 
-let (n,newGen) = randomR (0,length xs - 1) gen
-					 					front = xs !! n
-						in  front : randPerm newGen (take n xs ++ drop (n+1) xs)
-
---}
+getRandom :: Int -> IO Int
+getRandom range = do
+			time <- getCurrentTime
+			let ran = (floor . toRational . utctDayTime $ time) `mod` range
+			return ran
 
 
