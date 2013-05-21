@@ -11,7 +11,7 @@ import System.Posix
 --import System.Posix.Files
 import System.Locale
 import System.Time
---import System.Random  --not find Random module in Haskell 7.4.1
+--import System.Random  --Random module not found in Haskell 7.4.1
 import Data.Time
 import Data.Time.Format
 import Data.Time.Clock
@@ -54,24 +54,28 @@ setUpHandler :: [String] -> IO ()
 setUpHandler argus = do
 						inh <- openFile "twizze/names" ReadMode
 						outh <- openFile "twizze/buddy" WriteMode
-						createConfig (head argus)
+						createConfig argus
 						names <- readName inh [] --read all students names from file, and store names in varibal names, which is a list of string
 						randomNames <- shuffleList names -- shuffle name list, making it randomly.
+--						putStrLn (concat randomNames)
 						_ <- writeBuddies outh randomNames -- write those shuffled names into a file.
-						_ <- writeBuddies outh names
 						hClose inh
 						hClose outh
 
 
-createConfig :: String -> IO ()
-createConfig deadline = do
-						outh <- openFile "config" WriteMode
-						hPutStrLn outh deadline
-						hPutStrLn outh "task"
+--first argument is deadline
+--second argument is twizze name
+createConfig :: [String] -> IO ()
+createConfig argus = do
+						outh <- openFile "twizze/config" WriteMode
+						hPutStrLn outh "uploadTwizze" -- current state
+						hPutStrLn outh (argus !! 0) -- deadline
+						hPutStrLn outh (argus !! 1) -- twizze name
 						hClose outh
 
 
 --readName function reads all students names from input handler, it recursively call itself.
+--this function not only reads all names from configuration file, it also create folder for each name. 
 readName :: Handle -> [String] -> IO [String]
 readName inh names = do
 				ineof <- hIsEOF inh
@@ -79,9 +83,13 @@ readName inh names = do
 				then return names
 				else do
 						name <- hGetLine inh
-						System.Directory.createDirectory ("twizze" ++ "/" ++ name) --create a folder for every student.
-						setFileMode ("twizze/" ++ name) 0o757
-						readName inh (name:names)
+						isExist <- fileExist "name"
+						if (isExist == True)
+						then readName inh (name:names)
+						else do
+							System.Directory.createDirectory ("twizze" ++ "/" ++ name) --create a folder for every student.
+							setFileMode ("twizze/" ++ name) 0o757
+							readName inh (name:names)
 				
 
 -- write buddy information into a file
@@ -111,7 +119,7 @@ twizzeHandler argus = do
 						if (not . isRegisted $ uid)
 						then putStrLn "sorry, you are not registed in this class."
 						else do
-								if(not (curState == "task"))
+								if(not (curState == "uploadTwizze"))
 								then putStrLn "sorry, you can not submit twizze now."
 								else do
 										if(alreadySubmitted uid)
@@ -134,11 +142,16 @@ isRegisted uid = True
 
 --check whether currentet state allows students to submit their twizzes.
 --need to be refactored
-curState = "task"
+curState = "uploadTwizze"
 
 alreadySubmitted :: String -> Bool
 alreadySubmitted uid = False
 
+--readTwizze
+--
+--
+--
+--
 -- user need use this command to submit their twizzer homeworks
 submittwizze :: String -> IO ()
 submittwizze path = do
