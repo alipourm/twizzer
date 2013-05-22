@@ -32,8 +32,9 @@ main = do
 execute :: [String] -> IO ()
 execute all@(command:argus)
 				| command == "setUp" = setUpHandler argus -- admin 
-				| command == "nextStep" = putStrLn "nextStep" -- admin
+				| command == "nextStep" = nextStepHandler -- putStrLn "nextStep" -- admin
 				| command == "showTwizze" = putStrLn "showTwizz" --showTwizze-- user run this command after admin has set up the twizze homework
+				| command == "showBuddyTwizze" = showBuddyTwizze
 				| command == "submitTwizze" = twizzeHandler argus--putStrLn "submitTwizz" --twizzeHandler argus -- user wants to submit their solution
 				| command == "submitReview" = putStrLn "submitReview" --reviewHandler argus -- user
 				| otherwise = putStrLn "wrong command, please try again"
@@ -55,6 +56,8 @@ setUpHandler argus = do
 						inh <- openFile "twizze/names" ReadMode
 						outh <- openFile "twizze/buddy" WriteMode
 						createConfig argus
+						System.Directory.createDirectory ("twizze/" ++ (argus !! 1)) 
+						setFileMode ("twizze/" ++ (argus !! 1)) 0o757
 						names <- readName inh [] --read all students names from file, and store names in varibal names, which is a list of string
 						randomNames <- shuffleList names -- shuffle name list, making it randomly.
 --						putStrLn (concat randomNames)
@@ -74,6 +77,8 @@ createConfig argus = do
 						hClose outh
 
 
+readTwizzeName :: IO String
+
 --readName function reads all students names from input handler, it recursively call itself.
 --this function not only reads all names from configuration file, it also create folder for each name. 
 readName :: Handle -> [String] -> IO [String]
@@ -83,12 +88,13 @@ readName inh names = do
 				then return names
 				else do
 						name <- hGetLine inh
-						isExist <- fileExist "name"
+						twizzeName <- readTwizzeName
+						isExist <- fileExist ("twizze/" ++ twizzeName ++ "/" ++ name)
 						if (isExist == True)
 						then readName inh (name:names)
 						else do
-							System.Directory.createDirectory ("twizze" ++ "/" ++ name) --create a folder for every student.
-							setFileMode ("twizze/" ++ name) 0o757
+							System.Directory.createDirectory ("twizze/" ++ twizzeName ++ "/" ++ name) --create a folder for every student.
+							setFileMode ("twizze/" ++ twizzeName ++ "/" ++ name) 0o757
 							readName inh (name:names)
 				
 
@@ -156,11 +162,28 @@ alreadySubmitted uid = False
 submittwizze :: String -> IO ()
 submittwizze path = do
 					uid <- getUID
-					copyFile path ("../../q/qiq/twizze/" ++ uid ++ "/twizze1.hs")
-					setFileMode ("../../q/qiq/twizze/" ++ uid ++ "/twizze1.hs") 0o755
+					copyFile path ("../../q/qiq/twizze/" ++ twizzeName ++ "/" ++ uid ++ "/" ++ twizzeName)
+					setFileMode ("../../q/qiq/twizze/" ++ twizzeName ++ "/" ++ uid ++ "/" ++ twizzeName) 0o755
 					putStrLn "submit homework successfully"
 				--need to copy twizze file from student directory to administrator's directory
 				
+
+
+
+showBuddyTwizze :: IO ()
+showBuddyTwizze = do
+					if (not state == "submitReview")
+					then putStrLn "sorry, you can not see buddies homework at this stage"
+					else do
+							uid <- getUID
+							if (not . isRegistated $ uid)
+							then putStrLn "sorry, you are not registred in this class"
+							else do
+									listBuddies <- readBuddies -- read all buddies from file buddy
+									let buddy = lookup uid listBuddies -- look for current users buddy
+									content <- readFile ("twizze/" ++ twizzeName ++ "/" ++ buddy ++ "/" ++ twizzeName) -- read buddies's homework and print out
+									putStrLn content
+
 
 
 
@@ -218,4 +241,20 @@ getRandom range = do
 			let ran = (floor . toRational . utctDayTime $ time) `mod` range
 			return ran
 
+allStates = ["uploadTwizze", "submitReview", "seeReview"]
+
+
+-- nextStep run by admin to switch state
+-- basiclly it is used to change config file.
+nextStepHandler :: [String] -> IO ()
+nextStepHandler = do
+					currentState <- readCurrentState
+					let nextState = findNextState currentState -- compare with allStates
+					inh <- openFile "config"
+					if nextState == "submitReview"
+					then hPutStrLn inh deadline
+					else if nextState == "seeReview"
+					then hPutStrLn inh xxx
+					else do
+						putStrLn "no more state"
 
