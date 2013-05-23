@@ -32,9 +32,9 @@ main = do
 execute :: [String] -> IO ()
 execute all@(command:argus)
 				| command == "setUp" = setUpHandler argus -- admin 
-				| command == "nextStep" = nextStepHandler -- putStrLn "nextStep" -- admin
+				| command == "nextStep" = nextStepHandler argus-- putStrLn "nextStep" -- admin
 				| command == "showTwizze" = putStrLn "showTwizz" --showTwizze-- user run this command after admin has set up the twizze homework
-				| command == "showBuddyTwizze" = showBuddyTwizze
+				| command == "showBuddyTwizze" = showBuddyTwizze -- Now assume 1 on 1 //. read . head $ argus
 				| command == "submitTwizze" = twizzeHandler argus--putStrLn "submitTwizz" --twizzeHandler argus -- user wants to submit their solution
 				| command == "submitReview" = putStrLn "submitReview" --reviewHandler argus -- user
 				| otherwise = putStrLn "wrong command, please try again"
@@ -77,7 +77,6 @@ createConfig argus = do
 						hClose outh
 
 
-readTwizzeName :: IO String
 
 --readName function reads all students names from input handler, it recursively call itself.
 --this function not only reads all names from configuration file, it also create folder for each name. 
@@ -88,7 +87,8 @@ readName inh names = do
 				then return names
 				else do
 						name <- hGetLine inh
-						twizzeName <- readTwizzeName
+						configs <- readAllConfig
+						let twizzeName = (configs !! 2)
 						isExist <- fileExist ("twizze/" ++ twizzeName ++ "/" ++ name)
 						if (isExist == True)
 						then readName inh (name:names)
@@ -122,7 +122,7 @@ writeLoop inh outh = do
 twizzeHandler :: [String] -> IO ()
 twizzeHandler argus = do
 						uid <- getUID
-						if (not . isRegisted $ uid)
+						if (not . isRegistered $ uid)
 						then putStrLn "sorry, you are not registed in this class."
 						else do
 								if(not (curState == "uploadTwizze"))
@@ -143,8 +143,8 @@ getUID = getEffectiveUserName
 
 --whether current user is registed in this class
 --need to be refactored
-isRegisted :: String -> Bool
-isRegisted uid = True
+isRegistered :: String -> Bool
+isRegistered uid = True
 
 --check whether currentet state allows students to submit their twizzes.
 --need to be refactored
@@ -162,6 +162,8 @@ alreadySubmitted uid = False
 submittwizze :: String -> IO ()
 submittwizze path = do
 					uid <- getUID
+					configs <- readAllConfig
+					let twizzeName = configs !! 2
 					copyFile path ("../../q/qiq/twizze/" ++ twizzeName ++ "/" ++ uid ++ "/" ++ twizzeName)
 					setFileMode ("../../q/qiq/twizze/" ++ twizzeName ++ "/" ++ uid ++ "/" ++ twizzeName) 0o755
 					putStrLn "submit homework successfully"
@@ -172,19 +174,30 @@ submittwizze path = do
 
 showBuddyTwizze :: IO ()
 showBuddyTwizze = do
-					if (not state == "submitReview")
+					configs <- readAllConfig
+					let state = head configs
+					let twizzeName = (configs !! 2)
+					if (not (state == "submitReview"))
 					then putStrLn "sorry, you can not see buddies homework at this stage"
 					else do
 							uid <- getUID
-							if (not . isRegistated $ uid)
+							if (not . isRegistered $ uid)
 							then putStrLn "sorry, you are not registred in this class"
 							else do
 									listBuddies <- readBuddies -- read all buddies from file buddy
-									let buddy = lookup uid listBuddies -- look for current users buddy
+									let buddy = findBuddy uid listBuddies -- look for current users buddy
 									content <- readFile ("twizze/" ++ twizzeName ++ "/" ++ buddy ++ "/" ++ twizzeName) -- read buddies's homework and print out
 									putStrLn content
 
 
+
+findBuddy :: String -> [(String, String)] -> String
+findBuddy uid listBuddy = "qiq"
+
+
+readBuddies :: IO [(String, String)]
+readBuddies = do
+				return [("a", "b")]
 
 
 {--
@@ -203,7 +216,7 @@ parseCommand commandLine =
 
 showTwizze :: IO ()
 showTwizze = do
-			if (not isRegisted(getUID))
+			if (not isRegistered(getUID))
 			then putStrLn "sorry"
 			else do
 				if (not existFile(twizzefileName))
@@ -244,17 +257,39 @@ getRandom range = do
 allStates = ["uploadTwizze", "submitReview", "seeReview"]
 
 
+findNextState :: String -> String
+findNextState currentState 
+						| currentState == "uploadTwizze" = "submitReview"
+						| currentState == "submitReview" = "seeReview"
+						| currentState == "seeReview" = "seeReview"
+
 -- nextStep run by admin to switch state
 -- basiclly it is used to change config file.
 nextStepHandler :: [String] -> IO ()
-nextStepHandler = do
-					currentState <- readCurrentState
-					let nextState = findNextState currentState -- compare with allStates
-					inh <- openFile "config"
+nextStepHandler argus = do
+					configs <- readAllConfig
+					let nextState = findNextState (configs !! 0) -- compare with allStates
+					outh <- openFile "config" WriteMode
 					if nextState == "submitReview"
-					then hPutStrLn inh deadline
-					else if nextState == "seeReview"
-					then hPutStrLn inh xxx
+					then do
+						hPutStrLn outh nextState
+						hPutStrLn outh (argus !! 0)
+						hPutStrLn outh (configs !! 2)
 					else do
-						putStrLn "no more state"
+						hPutStrLn outh nextState
+						hPutStrLn outh "none"
+						hPutStrLn outh (configs !! 2)
+					hClose outh
+
+
+
+readAllConfig :: IO [String]
+readAllConfig = do
+					inh <- openFile "twizze/config" ReadMode
+					state <- hGetLine inh
+					deadline <- hGetLine inh
+					twizzeName <- hGetLine inh
+					hClose inh
+					return [state, deadline, twizzeName]
+
 
