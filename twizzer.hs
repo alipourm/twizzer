@@ -122,10 +122,11 @@ writeLoop inh outh = do
 twizzeHandler :: [String] -> IO ()
 twizzeHandler argus = do
 						uid <- getUID
+						configs <- readAllConfig
 						if (not . isRegistered $ uid)
 						then putStrLn "sorry, you are not registed in this class."
 						else do
-								if(not (curState == "uploadTwizze"))
+								if(not $  (head configs)  == "uploadTwizze")
 								then putStrLn "sorry, you can not submit twizze now."
 								else do
 										if(alreadySubmitted uid)
@@ -164,8 +165,8 @@ submittwizze path = do
 					uid <- getUID
 					configs <- readAllConfig
 					let twizzeName = configs !! 2
-					copyFile path ("../../q/qiq/twizze/" ++ twizzeName ++ "/" ++ uid ++ "/" ++ twizzeName)
-					setFileMode ("../../q/qiq/twizze/" ++ twizzeName ++ "/" ++ uid ++ "/" ++ twizzeName) 0o755
+					copyFile path ("../mango/twizze/" ++ twizzeName ++ "/" ++ uid ++ "/" ++ twizzeName ++ ".hs")
+					setFileMode ("../mango/twizze/" ++ twizzeName ++ "/" ++ uid ++ "/" ++ twizzeName ++ ".hs") 0o755
 					putStrLn "submit homework successfully"
 				--need to copy twizze file from student directory to administrator's directory
 				
@@ -186,18 +187,18 @@ showBuddyTwizze = do
 							else do
 									listBuddies <- readBuddies -- read all buddies from file buddy
 									let buddy = findBuddy uid listBuddies -- look for current users buddy
-									content <- readFile ("twizze/" ++ twizzeName ++ "/" ++ buddy ++ "/" ++ twizzeName) -- read buddies's homework and print out
+									content <- readFile ("../mango/twizze/" ++ twizzeName ++ "/" ++ buddy ++ "/" ++ twizzeName ++ ".hs") -- read buddies's homework and print out
 									putStrLn content
 
 
 
 findBuddy :: String -> [(String, String)] -> String
-findBuddy uid listBuddy = "qiq"
+findBuddy uid listBuddy = "meisi"
 
 
 readBuddies :: IO [(String, String)]
 readBuddies = do
-				return [("a", "b")]
+				return [("qiq", "meisi")]
 
 
 {--
@@ -269,7 +270,8 @@ nextStepHandler :: [String] -> IO ()
 nextStepHandler argus = do
 					configs <- readAllConfig
 					let nextState = findNextState (configs !! 0) -- compare with allStates
-					outh <- openFile "config" WriteMode
+					putStrLn ("nextState:" ++ nextState)
+					outh <- openFile "twizze/config" WriteMode
 					if nextState == "submitReview"
 					then do
 						hPutStrLn outh nextState
@@ -285,11 +287,12 @@ nextStepHandler argus = do
 
 readAllConfig :: IO [String]
 readAllConfig = do
-					inh <- openFile "twizze/config" ReadMode
+					inh <- openFile "../mango/twizze/config" ReadMode
 					state <- hGetLine inh
 					deadline <- hGetLine inh
 					twizzeName <- hGetLine inh
 					hClose inh
 					return [state, deadline, twizzeName]
+
 
 
