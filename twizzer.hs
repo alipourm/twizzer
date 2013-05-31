@@ -45,33 +45,6 @@ execute all@(command:argus)
 parseCommand :: String -> [String]
 parseCommand commands = words commands
 
---administrator sets up twizzer system
---arguments should follow: deadline randomSeed twizzefileName
---there should be a configuration file called "names.txt", which stores dealline for current twizze, and students names.
---fisrt, setUpHandler reads names from names.txt, and assigns buddies for each student, and store buddies information in another file,
---called buddy.txt
-{-
-setUpHandler :: [String] -> IO ()
-setUpHandler argus = do
-						--inh <- openFile "twizze/names" ReadMode
-                        --names <- readName
-						--outh <- openFile "twizze/buddy" WriteMode
-						createConfig argus --create configuration file, every setup will generate a new config file
-                        createProject
-						--System.Directory.createDirectory ("twizze/" ++ (argus !! 1))
-						--setFileMode ("twizze/" ++ (argus !! 1)) 0o757
-						names <- readName --read all students names from file, and store names in varibal names, which is a list of string
-                        --createFolders names
-                        buildBuddies names
-						--let randomNames <- shuffleList names -- shuffle name list, making it randomly.
---						putStrLn (concat randomNames)
-						--let chgRandNames = (tail randomNames) ++ [(head randomNames)]
-						--_ <- writeBuddies outh chgRandNames  randomNames -- write those shuffled names into a file.
-						--hClose inh
-						--hClose outh
-
--}
-
 setUpHandler :: [String] -> IO ()
 setUpHandler argus = do
                        createConfig argus --create configuration file, every setup will generate a new config file
@@ -83,23 +56,21 @@ setUpHandler argus = do
 createProject :: IO ()
 createProject = do
                   configs <- readAllConfig
-                  createDirectory ("twizze/" ++ (configs !! 2)) 0o757-- create folder for current project
-                  --setFileMode ("twizze/" ++ (configs !! 2)) 0o757
+                  createDirectory (configs !! 2) 0o757-- create folder for current project
                   names <- readName
-                  createFolders ("twizze/" ++ (configs !! 2) ++ "/") names 0o757
+                  createFolders ((configs !! 2) ++ "/") names 0o757
 
 
 createFolders :: String -> [String] -> FileMode -> IO ()
 createFolders _ [] _ = return ()
 createFolders path (x:xs) mode = do
                               createDirectory (path ++ x) mode
-                              --setFileMode ("twizze/" ++ x) mode
                               createFolders path xs mode
 
 
 buildBuddies :: [String] -> IO ()
 buildBuddies names = do
-                       outh <- openFile "twizze/buddy" WriteMode
+                       outh <- openFile "buddy" WriteMode
                        ran <- getRandom 60
                        let randomNames = randPerm (mkStdGen ran) names
                        let randomNamesShiftByOne = (tail randomNames) ++ [(head randomNames)]
@@ -123,38 +94,18 @@ randPerm gen xs = let (n, newGen) = randomR (0, length xs - 1) gen
 --second argument is twizze name
 createConfig :: [String] -> IO ()
 createConfig argus = do
-						outh <- openFile "twizze/config" WriteMode
-						hPutStrLn outh "uploadTwizze" -- current state
-						hPutStrLn outh (argus !! 0) -- deadline
-						hPutStrLn outh (argus !! 1) -- twizze name
-						hClose outh
+                        workingDir <- getWorkingDirectory
+                        outh <- openFile "config" WriteMode
+                        hPutStrLn outh "uploadTwizze" -- current state
+                        hPutStrLn outh (argus !! 0) -- deadline
+                        hPutStrLn outh (argus !! 1) -- twizze name
+                        hPutStrLn outh workingDir -- working directory
+                        hClose outh
 
-
-{-
---readName function reads all students names from input handler, it recursively call itself.
---this function not only reads all names from configuration file, it also create folder for each name. 
-readName :: Handle -> [String] -> IO [String]
-readName inh names = do
-				ineof <- hIsEOF inh
-				if ineof
-				then return names
-				else do
-						name <- hGetLine inh
-						configs <- readAllConfig
-						let twizzeName = (configs !! 2)
-						isExist <- fileExist ("twizze/" ++ twizzeName ++ "/" ++ name)
-						if (isExist == True)
-						then readName inh (name:names)
-						else do
-							System.Directory.createDirectory ("twizze/" ++ twizzeName ++ "/" ++ name) --create a folder for every student.
-							setFileMode ("twizze/" ++ twizzeName ++ "/" ++ name) 0o757
-							readName inh (name:names)
-
--}
 
 readName :: IO [String]
 readName = do
-             content <- readFile "twizze/names"
+             content <- readFile "names"
              return . words $ content
 
 
@@ -174,51 +125,45 @@ writeBuddies outh (n:names)(sn:shuffledN) = do
 --client submit twizze, argu1 should be path
 twizzeHandler :: [String] -> IO ()
 twizzeHandler argus = do
-						uid <- getUID
-						configs <- readAllConfig
-						isPass <- passDeadLine (configs !! 1)
-						let twizzeName = (configs !! 2)
-						inh <- openFile "twizze/names" ReadMode
-						names <- readName
-						hClose inh
-						if (not True)
-						then putStrLn "sorry, you are not registed in this class."
-						else do
-								if(not $  (head configs)  == "uploadTwizze")
-								then putStrLn "sorry, you can not submit twizze now at current phase"
-								else do
-										if(isPass)
-										then putStrLn "sorry, you can not submit homework because deadline is passed"
-										else do
-												twizzeContent <- readFile (head argus)
-												appendFile ("../mango/twizze/" ++ twizzeName ++ "/" ++ uid ++ "/twizze.hs") ("--------------------------\n" ++ twizzeContent)
-												setFileMode ("../mango/twizze/" ++ twizzeName ++ "/" ++ uid ++ "/twizze.hs") 0o755
-												putStrLn "upload successfully"
+                        configs <- readAllConfig
+                        isInClass <- isRegistered
+                        if (not isInClass)
+                        then putStrLn "sorry, you can not submit twizze because you are not registed in this class."
+                        else do
+                               let currentState = (head configs)
+                               if(currentState /= "uploadTwizze")
+                               then putStrLn "sorry, you can not submit twizze at current phase"
+                               else do
+                                      let deadLine = (configs !! 1)
+                                      isPass <- passDeadLine deadLine
+                                      if(isPass)
+                                      then putStrLn "sorry, you can not submit twizze because deadline is passed"
+                                      else do
+                                             uid <- getUID
+                                             let twizzeName = (configs !! 2)
+                                             let path = (configs !! 3)
+                                             twizzeContent <- readFile (head argus)
+                                             appendFile (path ++ "/" ++ twizzeName ++ "/" ++ uid ++ "/twizze.hs") ("######################\n" ++ twizzeContent)
+                                             setFileMode (path ++ "/" ++ twizzeName ++ "/" ++ uid ++ "/twizze.hs") 0o755
+                                             putStrLn "upload successfully"
 
 
 
-{-
--- user need use this command to submit their twizzer homeworks
-submittwizze :: String -> IO ()
-submittwizze path = do
-					uid <- getUID
-					configs <- readAllConfig
-					let twizzeName = configs !! 2
-					copyFile path ("../mango/twizze/" ++ twizzeName ++ "/" ++ uid ++ "/" ++ twizzeName ++ ".hs")
-					setFileMode ("../mango/twizze/" ++ twizzeName ++ "/" ++ uid ++ "/" ++ twizzeName ++ ".hs") 0o755
-					putStrLn "submit homework successfully"
-				--need to copy twizze file from student directory to administrator's directory
-				
+
+--whether current user is registed in this class
+isRegistered :: IO Bool
+isRegistered = do
+                 uid <- getUID
+                 names <- readName
+                 return (uid `elem` names)
 
 
--}
-
-
--- 
 --
 --"26 Jan 2012 10:54 AM"
 passDeadLine :: String -> IO Bool
 passDeadLine dateString = do
+                            return False
+{-
 							let deadline = readTime defaultTimeLocale "%d %b %Y %l:%M %p" dateString :: UTCTime
 							currentTime <- getCurrentTime --IO UTCTime 
 							let timeDiffInSeconds = floor (toRational (diffUTCTime deadline currentTime))
@@ -227,6 +172,7 @@ passDeadLine dateString = do
 							else return True
 
 
+-}
 
 
 
@@ -235,46 +181,28 @@ passDeadLine dateString = do
 getUID :: IO String
 getUID = getEffectiveUserName
 
---whether current user is registed in this class
---need to be refactored
-isRegistered :: String -> [String] -> Bool
-isRegistered uid names = uid `elem` names
-
---check whether currentet state allows students to submit their twizzes.
---need to be refactored
---curState = "uploadTwizze"
-{-
-alreadySubmitted :: String -> Bool
-alreadySubmitted uid = False
--}
-
---readTwizze
---
---
---
---
-
-
 
 
 showBuddyTwizze :: IO ()
 showBuddyTwizze = do
-					configs <- readAllConfig
-					let state = head configs
-					let twizzeName = (configs !! 2)
-					if (not (state == "submitReview"))
-					then putStrLn "sorry, you can not see buddies homework at this stage"
-					else do
-							uid <- getUID
-							if (not True)
-							then putStrLn "sorry, you are not registred in this class"
-							else do
-									inh <- openFile "twizze/buddy" ReadMode
-									listBuddies <- readBuddies inh []-- read all buddies from file buddy
-									buddy <- findBuddy uid listBuddies -- look for current users buddy
-									content <- readFile ("../mango/twizze/" ++ twizzeName ++ "/" ++ buddy ++ "/twizze.hs") -- read buddies's homework and print out
-									putStrLn content
-									hClose inh
+                    configs <- readAllConfig
+                    isInClass <- isRegistered
+                    if(not isInClass)
+                    then putStrLn "sorry, you are not registed in this class."
+                    else do
+                           let currentState = (head configs)
+                           if (currentState /= "submitReview")
+                           then putStrLn "sorry, you can not see buddies homework at current phase"
+                           else do
+                                  let twizzeName = (configs !! 2)
+                                  let path = (configs !! 3)
+                                  uid <- getUID
+                                  inh <- openFile (path ++ "/buddy") ReadMode
+                                  listBuddies <- readBuddies inh []-- read all buddies from file buddy
+                                  buddy <- findBuddy uid listBuddies -- look for current users buddy
+                                  content <- readFile (path ++ "/" ++ twizzeName ++ "/" ++ buddy ++ "/twizze.hs") -- read buddies's homework and print out
+                                  putStrLn content
+                                  hClose inh
 
 
 {--
@@ -290,12 +218,12 @@ readBuddies = do
 
 
 findBuddy :: String -> [(String, String)] -> IO (String)
-findBuddy uid [] = return  "can't find buddy"
+findBuddy uid [] = error "can not find buddy"
 findBuddy uid (x:listBuddy) = do
 								if (uid == (fst x))
 								then return (snd x)
 								else do
-									findBuddy uid listBuddy 
+									findBuddy uid listBuddy
 
 
 readBuddies :: Handle -> [(String, String)] -> IO [(String, String)]
@@ -316,33 +244,6 @@ parseBuddies (x:y:xs) = (x,y):(parseBuddies xs)
 
 
 
-
-{--
-reviewHandler :: [String] -> IO ()
-reviewHandler argus = do
-
---xxxHandler :: IO ()
-
-
-
-parseCommand :: String -> [String]
-parseCommand commandLine = 
-
-
-
-
-showTwizze :: IO ()
-showTwizze = do
-			if (not isRegistered(getUID))
-			then putStrLn "sorry"
-			else do
-				if (not existFile(twizzefileName))
-				then putStrLn "sorry"
-				else putStrLn twizzefile
-
-
-
---}
 -- this function is used to shuffle a list randomly
 {-
 shuffleList :: [a] -> IO [a]
@@ -370,62 +271,67 @@ findNextState currentState
 						| currentState == "submitReview" = "seeReview"
 						| currentState == "seeReview" = "seeReview"
 
+
 -- nextStep run by admin to switch state
 -- basiclly it is used to change config file.
 nextStepHandler :: [String] -> IO ()
 nextStepHandler argus = do
-					configs <- readAllConfig
-					let nextState = findNextState (configs !! 0) -- compare with allStates
-					putStrLn ("nextState:" ++ nextState)
-					outh <- openFile "twizze/config" WriteMode
-					if nextState == "submitReview"
-					then do
-						hPutStrLn outh nextState
-						hPutStrLn outh (argus !! 0)
-						hPutStrLn outh (configs !! 2)
-					else do
-						hPutStrLn outh nextState
-						hPutStrLn outh "none"
-						hPutStrLn outh (configs !! 2)
-					hClose outh
+                          configs <- readAllConfig
+                          let nextState = findNextState (configs !! 0) -- compare with allStates
+                          putStrLn ("nextState:" ++ nextState)
+                          outh <- openFile "config" WriteMode
+                          if nextState == "submitReview"
+                          then do
+                                 hPutStrLn outh nextState
+                                 hPutStrLn outh (argus !! 0)
+                                 hPutStrLn outh (configs !! 2)
+                                 hPutStrLn outh (configs !! 3)
+                          else do
+                                 hPutStrLn outh nextState
+                                 hPutStrLn outh "none"
+                                 hPutStrLn outh (configs !! 2)
+                                 hPutStrLn outh (configs !! 3)
+                          hClose outh
 
 
 
 readAllConfig :: IO [String]
 readAllConfig = do
-					inh <- openFile "twizze/config" ReadMode
-					state <- hGetLine inh
-					deadline <- hGetLine inh
-					twizzeName <- hGetLine inh
-					hClose inh
-					return [state, deadline, twizzeName]
+                  inh <- openFile "config" ReadMode
+                  state <- hGetLine inh
+                  deadline <- hGetLine inh
+                  twizzeName <- hGetLine inh
+                  workingDir <- hGetLine inh
+                  hClose inh
+                  return [state, deadline, twizzeName, workingDir]
 
 
 submitReview :: String -> IO ()
 submitReview filePath = do
-						uid <- getUID
-						inh <- openFile "twizze/buddy" ReadMode
-						listBuddies <- readBuddies inh []-- read all buddies from file buddy
-						reviewWho <- findBuddy uid listBuddies
-						hClose inh
-						--isRegistered <- registered
-						configs <- readAllConfig
-						let twizzeName = (configs !! 2)
-						let deadline = (configs !! 1)
-						let state = (configs !! 0)
-						isPass <- passDeadLine deadline
-						if (not True)
-						then putStrLn "sorry,"
-						else do
-								if( state /= "submitReview")
-								then putStrLn "not correct phase"
-								else do
-										if(isPass)
-										then putStrLn "sorry, pass deadline"
-										else do
-												reviewContent <- readFile filePath
-												appendFile ("../mango/twizze/" ++ twizzeName ++ "/" ++ reviewWho ++ "/review") ("------------------------\n" ++ reviewContent)
-												setFileMode ("../mango/twizze/" ++ twizzeName ++ "/" ++ reviewWho ++ "/review") 0o755
+                          configs <- readAllConfig
+                          isInClass <- isRegistered
+                          if (not isInClass)
+                          then putStrLn "sorry, you are not registered in this class."
+                          else do
+                                 let currentState = (configs !! 0)
+                                 if( currentState /= "submitReview")
+                                 then putStrLn "sorry, you can not submit review at current phase."
+                                 else do
+                                        let deadLine = (configs !! 1)
+                                        isPass <- passDeadLine deadLine
+                                        if(isPass)
+                                        then putStrLn "sorry, you have passed deadline."
+                                        else do
+                                               uid <- getUID
+                                               let path = (configs !! 3)
+                                               let twizzeName = (configs !! 2)
+                                               inh <- openFile (path ++ "/buddy") ReadMode
+                                               listBuddies <- readBuddies inh []-- read all buddies from file buddy
+                                               reviewWho <- findBuddy uid listBuddies
+                                               hClose inh
+                                               reviewContent <- readFile filePath
+                                               appendFile (path ++ "/" ++ twizzeName ++ "/" ++ reviewWho ++ "/review") ("#################\n" ++ reviewContent)
+                                               setFileMode (path ++ "/" ++ twizzeName ++ "/" ++ reviewWho ++ "/review") 0o755
 
 
 
@@ -436,12 +342,17 @@ submitReview filePath = do
 
 seeReview :: IO ()
 seeReview = do
-			uid <- getUID
-			configs <- readAllConfig
-			let twizzeName = (configs !! 2)
-			let state = (configs !! 0)
-			if( state /= "seeReview")
-			then putStrLn "sorry, not correct phase"
-			else do
-					content <- readFile ("../mango/twizze/" ++ twizzeName ++ "/" ++ uid ++ "/" ++ "review")
-					putStrLn content
+              configs <- readAllConfig
+              isInClass <- isRegistered
+              if (not isInClass)
+              then putStrLn "sorry, you are not registered in this class."
+              else do
+                     let currentState = (configs !! 0)
+                     if( currentState /= "seeReview")
+                     then putStrLn "sorry, you can not see review at current phase."
+                     else do
+                            uid <- getUID
+                            let twizzeName = (configs !! 2)
+                            let path = (configs !! 3)
+                            review <- readFile (path ++ "/" ++ twizzeName ++ "/" ++ uid ++ "/review")
+                            putStrLn review
