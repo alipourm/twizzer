@@ -6,7 +6,7 @@
 -}
 
 import System.IO
---import System.Directory
+import System.Directory
 import System.Posix
 --import System.Posix.Files
 import System.Locale
@@ -20,6 +20,7 @@ import Data.Time.Clock
 
 main :: IO ()
 main = do
+         putStrLn "type \"usage\" for Command Usage"
          line <- getLine
          let commands = parseCommand line
          if commands !! 0 == "exit"
@@ -28,17 +29,52 @@ main = do
                 execute commands
                 main
 
+printUsage :: IO ()
+printUsage = do
+               hasFile <- doesFileExist "names"
+               if(not hasFile)
+               then printUsageForUser
+               else printUsageForAdmin
+
+
+printUsageForUser :: IO ()
+printUsageForUser = do
+                      putStrLn "*************************************"
+                      putStrLn "* Usage:                            *"
+                      putStrLn "* Submit twizze:      subT filePath *"
+                      putStrLn "* Submit review:      subR filePath *"
+                      putStrLn "* See review:         seeR          *"
+                      putStrLn "* See buddies twizze: showT         *"
+                      putStrLn "*************************************"
+
+
+printUsageForAdmin :: IO ()
+printUsageForAdmin = do
+                       putStrLn "*****************************************************************"
+                       putStrLn "* Usage:                             cmd [argus]                *"
+                       putStrLn "* Next phase:                        chgState [deadline]        *"
+                       putStrLn "* Set up homework:                   setup deadline twizzeNames *"
+                       putStrLn "* Check who hasn't submit homeworkd: check                      *"
+                       putStrLn "* Combine all tiwzzes:               combineT                   *"
+                       putStrLn "* Combine all reviews:               combineR                   *"
+                       putStrLn "*****************************************************************"
+
+
 
 execute :: [String] -> IO ()
 execute all@(command:argus)
-				| command == "setUp" = setUpHandler argus -- admin
-				| command == "nextStep" = nextStepHandler argus-- putStrLn "nextStep" -- admin
-				| command == "showTwizze" = putStrLn "showTwizz" --showTwizze-- user run this command after admin has set up the twizze homework
-				| command == "showBuddyTwizze" = showBuddyTwizze -- Now assume 1 on 1 //. read . head $ argus
-				| command == "submitTwizze" = twizzeHandler argus--putStrLn "submitTwizz" --twizzeHandler argus -- user wants to submit their solution
-				| command == "submitReview" = submitReview (head argus) --putStrLn "submitReview" --reviewHandler argus -- user
-				| command == "seeReview" = seeReview
-				| otherwise = putStrLn "wrong command, please try again"
+                           | command == "usage" = printUsage
+                           | command == "setup" = setUpHandler argus -- admin
+                           | command == "chgState" = nextStepHandler argus-- putStrLn "nextStep" -- admin
+                           -- | command == "showT" = showBuddyTwizze --putStrLn "showTwizz" --showTwizze-- user run this command after admin has set up the twizze homework
+                           | command == "showT" = showBuddyTwizze -- Now assume 1 on 1 //. read . head $ argus
+                           | command == "subT" = twizzeHandler argus--putStrLn "submitTwizz" --twizzeHandler argus -- user wants to submit their solution
+                           | command == "subR" = submitReview (head argus) --putStrLn "submitReview" --reviewHandler argus -- user
+                           | command == "seeR" = seeReview
+                           | command == "check" = checkAll
+                           | command == "combineT" = combineAllTwizze
+                           | command == "combineR" = combineAllReview
+                           | otherwise = putStrLn "wrong command, please try again"
 
 
 
@@ -56,7 +92,8 @@ setUpHandler argus = do
 createProject :: IO ()
 createProject = do
                   configs <- readAllConfig
-                  createDirectory (configs !! 2) 0o757-- create folder for current project
+                  System.Directory.createDirectory (configs !! 2)-- create folder for current project
+                  setFileMode (configs !! 2) 0o757
                   names <- readName
                   createFolders ((configs !! 2) ++ "/") names 0o757
 
@@ -64,7 +101,8 @@ createProject = do
 createFolders :: String -> [String] -> FileMode -> IO ()
 createFolders _ [] _ = return ()
 createFolders path (x:xs) mode = do
-                              createDirectory (path ++ x) mode
+                              System.Directory.createDirectory (path ++ x)
+                              setFileMode (path ++ x) mode
                               createFolders path xs mode
 
 
@@ -105,7 +143,9 @@ createConfig argus = do
 
 readName :: IO [String]
 readName = do
-             content <- readFile "names"
+             configs <- readAllConfig
+             let path = (configs !! 3)
+             content <- readFile (path ++ "/names")
              return . words $ content
 
 
@@ -143,7 +183,7 @@ twizzeHandler argus = do
                                              let twizzeName = (configs !! 2)
                                              let path = (configs !! 3)
                                              twizzeContent <- readFile (head argus)
-                                             appendFile (path ++ "/" ++ twizzeName ++ "/" ++ uid ++ "/twizze.hs") ("######################\n" ++ twizzeContent)
+                                             appendFile (path ++ "/" ++ twizzeName ++ "/" ++ uid ++ "/twizze.hs") ("---homework from " ++ uid ++ "------------------\n" ++ twizzeContent)
                                              setFileMode (path ++ "/" ++ twizzeName ++ "/" ++ uid ++ "/twizze.hs") 0o755
                                              putStrLn "upload successfully"
 
@@ -159,20 +199,17 @@ isRegistered = do
 
 
 --
---"26 Jan 2012 10:54 AM"
+--"26Jan2012-10:54AM"
 passDeadLine :: String -> IO Bool
 passDeadLine dateString = do
-                            return False
-{-
-							let deadline = readTime defaultTimeLocale "%d %b %Y %l:%M %p" dateString :: UTCTime
-							currentTime <- getCurrentTime --IO UTCTime 
-							let timeDiffInSeconds = floor (toRational (diffUTCTime deadline currentTime))
-							if timeDiffInSeconds > 0
-							then return False
-							else return True
+                            let deadline = readTime defaultTimeLocale "%d%b%Y-%l:%M%p" dateString :: UTCTime
+                            currentTime <- getCurrentTime --IO UTCTime
+                            let timeDiffInSeconds = floor (toRational (diffUTCTime deadline currentTime))
+                            if (timeDiffInSeconds + 25200) > 0
+                            then return False
+                            else return True
 
 
--}
 
 
 
@@ -181,6 +218,13 @@ passDeadLine dateString = do
 getUID :: IO String
 getUID = getEffectiveUserName
 
+
+isAdmin :: IO Bool
+isAdmin = do
+            hasFile <- doesFileExist ("names")
+            if (not hasFile)
+            return False
+            return True
 
 
 showBuddyTwizze :: IO ()
@@ -200,21 +244,14 @@ showBuddyTwizze = do
                                   inh <- openFile (path ++ "/buddy") ReadMode
                                   listBuddies <- readBuddies inh []-- read all buddies from file buddy
                                   buddy <- findBuddy uid listBuddies -- look for current users buddy
-                                  content <- readFile (path ++ "/" ++ twizzeName ++ "/" ++ buddy ++ "/twizze.hs") -- read buddies's homework and print out
-                                  putStrLn content
-                                  hClose inh
+                                  hasFile <- doesFileExist (path ++ "/" ++ twizzeName ++ "/" ++ buddy ++ "/twizze.hs")
+                                  if (not hasFile)
+                                  then putStrLn "not homework found."
+                                  else do
+                                         content <- readFile (path ++ "/" ++ twizzeName ++ "/" ++ buddy ++ "/twizze.hs") -- read buddies's homework and print out
+                                         putStrLn content
+                                         hClose inh
 
-
-{--
-findBuddy :: String -> [(String, String)] -> String
-findBuddy uid listBuddy = "meisi"
-
-
-readBuddies :: IO [(String, String)]
-readBuddies = do
-				return [("qiq", "meisi")]
-
---}
 
 
 findBuddy :: String -> [(String, String)] -> IO (String)
@@ -295,9 +332,10 @@ nextStepHandler argus = do
 
 
 
+--how to find configuration file directory
 readAllConfig :: IO [String]
 readAllConfig = do
-                  inh <- openFile "config" ReadMode
+                  inh <- openFile "/home/qiq/583/twizzer/mypro/config" ReadMode
                   state <- hGetLine inh
                   deadline <- hGetLine inh
                   twizzeName <- hGetLine inh
@@ -330,13 +368,8 @@ submitReview filePath = do
                                                reviewWho <- findBuddy uid listBuddies
                                                hClose inh
                                                reviewContent <- readFile filePath
-                                               appendFile (path ++ "/" ++ twizzeName ++ "/" ++ reviewWho ++ "/review") ("#################\n" ++ reviewContent)
+                                               appendFile (path ++ "/" ++ twizzeName ++ "/" ++ reviewWho ++ "/review") ("---review for " ++ reviewwho ++ "from " ++ uid ++ "------------\n" ++ reviewContent)
                                                setFileMode (path ++ "/" ++ twizzeName ++ "/" ++ reviewWho ++ "/review") 0o755
-
-
-
-
-
 
 
 
@@ -354,5 +387,81 @@ seeReview = do
                             uid <- getUID
                             let twizzeName = (configs !! 2)
                             let path = (configs !! 3)
-                            review <- readFile (path ++ "/" ++ twizzeName ++ "/" ++ uid ++ "/review")
-                            putStrLn review
+                            hasFile <- doesFileExist (path ++ "/" ++ twizzeName ++ "/" ++ uid ++ "/review")
+                            if (not hasFile)
+                            then putStrLn "no review found."
+                            else do
+                                   review <- readFile (path ++ "/" ++ twizzeName ++ "/" ++ uid ++ "/review")
+                                   putStrLn review
+
+
+
+
+checkAll :: IO ()
+checkAll = do
+             hasFile <- doesFileExist "names"
+             if (not hasFile)
+             then putStrLn "sorry you are not allowed to take this step"
+             else do
+                    names <- readName
+                    students <- checkStudent names
+                    putStrLn . show $ students
+
+checkStudent :: [String] -> IO [String]
+checkStudent [] = return []
+checkStudent (x:xs) = do
+                        configs <- readAllConfig
+                        let twizzeName = (configs !! 2)
+                        --allNames <- readName
+                        isTwizzeExist <- doesFileExist (twizzeName ++ "/" ++ x ++ "/twizze.hs")
+                        rest <- checkStudent xs
+                        if (isTwizzeExist)
+                        then return (x:rest)
+                        else return rest
+
+
+
+combineAllTwizze :: IO ()
+combineAllTwizze = do
+                     configs <- readAllConfig
+                     let path = (configs !! 2) ++ "/"
+                     outh <- openFile (path ++ "allTwizze") WriteMode
+                     names <- readName
+                     combineTwizze outh names
+                     hClose outh
+
+
+combineTwizze :: Handle -> [String] -> IO ()
+combineTwizze _ [] = return ()
+combineTwizze outh (x:xs) = do
+                              hasFile <- doesFileExist (path ++ x ++ "/twizze.hs")
+                              if (not hasFile)
+                              then combineTwizze outh xs
+                              else do
+                                     content <- readFile (path ++ x ++ "/twizze.hs")
+                                     hPutStrLn outh content
+                                     combineTwizze outh xs
+
+
+combineAllReview :: IO ()
+combineAllReview = do
+                     configs <- readAllConfig
+                     let path = (configs !! 2) ++ "/"
+                     outh <- openFile (path ++ "allReview") WriteMode
+                     names <- readName
+                     combineReview outh names
+                     hClose outh
+
+
+
+
+combineReview :: Handle -> [String] -> IO ()
+combineReview _ [] = return ()
+combineReview outh (x:xs) = do
+                              hasFile <- doesFileExist (path ++ x ++ "/review")
+                              if (not hasFile)
+                              then combineReview outh xs
+                              else do
+                                     content <- readFile (path ++ x ++ "/review")
+                                     hPutStrLn outh content
+                                     combineReview outh xs
