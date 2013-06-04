@@ -223,8 +223,8 @@ isAdmin :: IO Bool
 isAdmin = do
             hasFile <- doesFileExist ("names")
             if (not hasFile)
-            return False
-            return True
+            then return False
+            else return True
 
 
 showBuddyTwizze :: IO ()
@@ -368,7 +368,7 @@ submitReview filePath = do
                                                reviewWho <- findBuddy uid listBuddies
                                                hClose inh
                                                reviewContent <- readFile filePath
-                                               appendFile (path ++ "/" ++ twizzeName ++ "/" ++ reviewWho ++ "/review") ("---review for " ++ reviewwho ++ "from " ++ uid ++ "------------\n" ++ reviewContent)
+                                               appendFile (path ++ "/" ++ twizzeName ++ "/" ++ reviewWho ++ "/review") ("---review for " ++ reviewWho ++ " from " ++ uid ++ "------------\n" ++ reviewContent)
                                                setFileMode (path ++ "/" ++ twizzeName ++ "/" ++ reviewWho ++ "/review") 0o755
 
 
@@ -427,20 +427,20 @@ combineAllTwizze = do
                      let path = (configs !! 2) ++ "/"
                      outh <- openFile (path ++ "allTwizze") WriteMode
                      names <- readName
-                     combineTwizze outh names
+                     combineTwizze outh path names
                      hClose outh
 
 
-combineTwizze :: Handle -> [String] -> IO ()
-combineTwizze _ [] = return ()
-combineTwizze outh (x:xs) = do
+combineTwizze :: Handle -> String -> [String] -> IO ()
+combineTwizze _ _ [] = return ()
+combineTwizze outh path (x:xs) = do
                               hasFile <- doesFileExist (path ++ x ++ "/twizze.hs")
                               if (not hasFile)
-                              then combineTwizze outh xs
+                              then combineTwizze outh path xs
                               else do
                                      content <- readFile (path ++ x ++ "/twizze.hs")
                                      hPutStrLn outh content
-                                     combineTwizze outh xs
+                                     combineTwizze outh path xs
 
 
 combineAllReview :: IO ()
@@ -449,19 +449,19 @@ combineAllReview = do
                      let path = (configs !! 2) ++ "/"
                      outh <- openFile (path ++ "allReview") WriteMode
                      names <- readName
-                     combineReview outh names
+                     combineReview outh path names
                      hClose outh
 
 
 
 
-combineReview :: Handle -> [String] -> IO ()
-combineReview _ [] = return ()
-combineReview outh (x:xs) = do
+combineReview :: Handle -> String -> [String] -> IO ()
+combineReview _ _ [] = return ()
+combineReview outh path (x:xs) = do
                               hasFile <- doesFileExist (path ++ x ++ "/review")
                               if (not hasFile)
-                              then combineReview outh xs
+                              then combineReview outh path xs
                               else do
                                      content <- readFile (path ++ x ++ "/review")
                                      hPutStrLn outh content
-                                     combineReview outh xs
+                                     combineReview outh path xs
