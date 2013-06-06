@@ -55,7 +55,8 @@ printUsageForAdmin = do
                        putStrLn "* Usage:                             cmd [argus]                *"
                        putStrLn "* Next phase:                        chgState [deadline]        *"
                        putStrLn "* Set up homework:                   setup deadline twizzeNames *"
-                       putStrLn "* Check who hasn't submit homeworkd: check                      *"
+                       putStrLn "* Check homework:                    checkT                     *"
+                       putStrLn "* Check review:                      checkR                     *"
                        putStrLn "* Combine all tiwzzes:               combineT                   *"
                        putStrLn "* Combine all reviews:               combineR                   *"
                        putStrLn "*****************************************************************"
@@ -72,7 +73,8 @@ execute all@(command:argus)
                            | command == "subT" = twizzeHandler argus--putStrLn "submitTwizz" --twizzeHandler argus -- user wants to submit their solution
                            | command == "subR" = submitReview (head argus) --putStrLn "submitReview" --reviewHandler argus -- user
                            | command == "seeR" = seeReview
-                           | command == "check" = checkAll
+                           | command == "checkT" = checkTwizze
+                           | command == "checkR" = checkReview
                            | command == "combineT" = combineAllTwizze
                            | command == "combineR" = combineAllReview
                            | otherwise = putStrLn "wrong command, please try again"
@@ -267,6 +269,17 @@ findBuddy uid (x:listBuddy) = do
 									findBuddy uid listBuddy
 
 
+
+findReviewee :: String -> [(String, String)] -> IO (String)
+findReviewee uid [] = error "can not find reviewer"
+findReviewee uid (x:listBuddy) = do
+                                   if (uid == (snd x))
+                                   then return (fst x)
+                                   else do
+                                          findReviewee uid listBuddy
+
+
+
 readBuddies :: Handle -> [(String, String)] -> IO [(String, String)]
 readBuddies inh buddies = do
 							ineof <- hIsEOF inh
@@ -401,18 +414,21 @@ seeReview = do
 
 
 
-checkAll :: IO ()
-checkAll = do
-             hasFile <- doesFileExist "names"
-             if (not hasFile)
-             then putStrLn "sorry you are not allowed to take this step"
-             else do
-                    names <- readName
-                    students <- checkStudent names
-                    putStrLn . show $ students
+checkTwizze :: IO ()
+checkTwizze = do
+                isadmin <- isAdmin
+                if (not isadmin)
+                then putStrLn "sorry you are not allowed to take this step"
+                else do
+                       names <- readName
+                       students <- checkStudent names
+                       putStrLn "who has turned in the twizze:"
+                       putStrLn . show $ (fst students)
+                       putStrLn "who has not turned in the twizze:"
+                       putStrLn . show $ (snd students)
 
-checkStudent :: [String] -> IO [String]
-checkStudent [] = return []
+checkStudent :: [String] -> IO ([String], [String])
+checkStudent [] = return ([], [])
 checkStudent (x:xs) = do
                         configs <- readAllConfig
                         let twizzeName = (configs !! 2)
@@ -420,8 +436,39 @@ checkStudent (x:xs) = do
                         isTwizzeExist <- doesFileExist (twizzeName ++ "/" ++ x ++ "/twizze.hs")
                         rest <- checkStudent xs
                         if (isTwizzeExist)
-                        then return (x:rest)
-                        else return rest
+                        then return (x:(fst rest), (snd rest))
+                        else return ((fst rest), x:(snd rest))
+
+
+
+checkReview :: IO ()
+checkReview = do
+                isadmin <- isAdmin
+                if (not isadmin)
+                then putStrLn "sorry you are not allowed to take this step"
+                else do
+                       names <- readName
+                       students <- checkStudent_ names
+                       putStrLn "who has turned in the review:"
+                       putStrLn . show $ (fst students)
+                       putStrLn "who has not turned in the review:"
+                       putStrLn . show $ (snd students)
+
+checkStudent_ :: [String] -> IO ([String], [String])
+checkStudent_ [] = return ([], [])
+checkStudent_ (x:xs) = do
+                        configs <- readAllConfig
+                        let twizzeName = (configs !! 2)
+                        --allNames <- readName
+                        isTwizzeExist <- doesFileExist (twizzeName ++ "/" ++ x ++ "/review")
+                        rest <- checkStudent_ xs
+                        inh <- openFile ((configs !! 3) ++ "/buddy") ReadMode
+                        listBuddies <- readBuddies inh []
+                        reviewer <- findReviewee x listBuddies
+                        if (isTwizzeExist)
+                        then return (reviewer:(fst rest), (snd rest))
+                        else return ((fst rest), reviewer:(snd rest))
+
 
 
 
