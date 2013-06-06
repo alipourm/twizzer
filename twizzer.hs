@@ -45,6 +45,7 @@ printUsageForUser = do
                       putStrLn "* Submit review:      subR filePath *"
                       putStrLn "* See review:         seeR          *"
                       putStrLn "* See buddies twizze: showT         *"
+                      putStrLn "* See assignment:     seeA          *"
                       putStrLn "*************************************"
 
 
@@ -66,7 +67,7 @@ execute all@(command:argus)
                            | command == "usage" = printUsage
                            | command == "setup" = setUpHandler argus -- admin
                            | command == "chgState" = nextStepHandler argus-- putStrLn "nextStep" -- admin
-                           -- | command == "showT" = showBuddyTwizze --putStrLn "showTwizz" --showTwizze-- user run this command after admin has set up the twizze homework
+                           | command == "seeA" = seeAssignment --putStrLn "showTwizz" --showTwizze-- user run this command after admin has set up the twizze homework
                            | command == "showT" = showBuddyTwizze -- Now assume 1 on 1 //. read . head $ argus
                            | command == "subT" = twizzeHandler argus--putStrLn "submitTwizz" --twizzeHandler argus -- user wants to submit their solution
                            | command == "subR" = submitReview (head argus) --putStrLn "submitReview" --reviewHandler argus -- user
@@ -93,9 +94,9 @@ createProject :: IO ()
 createProject = do
                   configs <- readAllConfig
                   System.Directory.createDirectory (configs !! 2)-- create folder for current project
-                  setFileMode (configs !! 2) 0o757
+                  setFileMode (configs !! 2) 0o751
                   names <- readName
-                  createFolders ((configs !! 2) ++ "/") names 0o757
+                  createFolders ((configs !! 2) ++ "/") names 0o753
 
 
 createFolders :: String -> [String] -> FileMode -> IO ()
@@ -114,6 +115,7 @@ buildBuddies names = do
                        let randomNamesShiftByOne = (tail randomNames) ++ [(head randomNames)]
                        writeBuddies outh randomNamesShiftByOne randomNames
                        hClose outh
+                       setFileMode ("buddy") 0o664
 
 
 
@@ -139,6 +141,8 @@ createConfig argus = do
                         hPutStrLn outh (argus !! 1) -- twizze name
                         hPutStrLn outh workingDir -- working directory
                         hClose outh
+                        setFileMode ("config") 0o664
+                        setFileMode ("names") 0o664
 
 
 readName :: IO [String]
@@ -335,7 +339,7 @@ nextStepHandler argus = do
 --how to find configuration file directory
 readAllConfig :: IO [String]
 readAllConfig = do
-                  inh <- openFile "/home/qiq/583/twizzer/mypro/config" ReadMode
+                  inh <- openFile "/nfs/stak/students/q/qiq/config" ReadMode
                   state <- hGetLine inh
                   deadline <- hGetLine inh
                   twizzeName <- hGetLine inh
@@ -465,3 +469,11 @@ combineReview outh path (x:xs) = do
                                      content <- readFile (path ++ x ++ "/review")
                                      hPutStrLn outh content
                                      combineReview outh path xs
+
+seeAssignment :: IO ()
+seeAssignment = do
+                  configs <- readAllConfig
+                  let path = (configs !! 3)
+                  let twizzeName = (configs !! 2)
+                  content <- readFile (path ++ "/" ++ twizzeName ++ "/assignment")
+                  putStrLn content
