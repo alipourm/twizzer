@@ -20,42 +20,70 @@ import Data.Time.Format
 import Data.Time.Clock
 
 
-data UserType = Student | Instructor | NotRegistered 
-              deriving (Show, Eq)
 
-data User = User {userId:: Int,
+
+
+
+
+data UserType = Student | Instructor | NotRegistered 
+              deriving (Show, Eq,Read)
+
+data User = User {userId:: String,
                   userType :: UserType,
-                  name:: String,
-                  onidID:: String} 
-          deriving (Show, Eq)
+                  name:: String} 
+          deriving (Show, Eq, Read)
 
 
 data AssignmentType = Twiz | Review
-                 deriving (Show, Eq)
+                 deriving (Show, Eq, Read)
 type File  = String
 
 type Time = String
 
-data Course = Course{courseID :: String,
-                     cName :: String,
-                     term :: String,
-                     startDate:: String,
-                     finalDate:: String}
-              deriving (Show, Eq)
 
-data Assignment = Assignment {assignmentID :: Int,
-                              course :: Course,
+
+data Config = C Course [Assignment]
+                  deriving (Show,Eq,Read)
+
+
+getCourse :: Config -> Course
+getCourse cfg = crs 
+                where C crs _ = cfg
+
+getAssignments ::Config -> [Assignment]
+getAssignments cfg = ars
+                     where C _ ars = cfg
+c = Course{coursePath = "/home/amin/fun/twizzer", studentNameFile = "/home/amin/fun/twizzer/twizzer"}
+a1 = Assignment {assignmentName = "Twiz1", assignmentType = Twiz, startTime = "26Jan2012-10:54AM",deadline="26Jul2013-10:54AM",description ="", points = 1 }
+a2 = Assignment {assignmentName = "Twiz1", assignmentType = Review, startTime = "26Jan2012-10:54AM",deadline="26Jul2013-10:54AM",description ="", points = 1 }
+
+cf = C c [a1,a2]
+cfg :: IO Config
+cfg = return cf
+
+data Course = Course{ 
+                     -- courseID   :: String,
+                     -- cName      :: String,
+                     -- term       :: String,
+                     -- startDate  :: String,
+                     -- finalDate  :: String,
+                     coursePath :: String, 
+                     studentNameFile ::String}
+              deriving (Show, Eq, Read)
+
+data Assignment = Assignment {assignmentName   :: String,
                               assignmentType :: AssignmentType,
-                              deadline :: Time,
-                              description :: String,
+                              startTime      :: Time,
+                              deadline       :: Time,
+                              description    :: String,
                               points :: Int} 
-                deriving (Show, Eq)
+                deriving (Show, Eq, Read)
                      
 data Submission = Submission  {sAssignmentID :: Int,
-                               sUserID:: Int,
-                               content:: Int,
-                               stime :: Time}
-                deriving (Show, Eq)
+                               sUserID       :: Int,
+                               content       :: String,
+                               stime         :: Time}
+                deriving (Show, Eq, Read)
                          
 type Function = [String] -> IO ()
 
@@ -71,24 +99,27 @@ data Command = Command {cname :: String,
                         }
            --    deriving (Show, Eq)
 
-usageSCmd   = Command {cname = "usage", cUser = Student, cDesc = "to give usage", cOp = printUsage, argc = 0}
-subTCmd     = Command {cname = "subT", cUser = Student, cDesc = "to give usage" , cOp = dummy, argc = 0}
-subRCmd     = Command {cname = "subR", cUser = Student, cDesc = "to give usage" , cOp = dummy, argc = 0}
-seeRCmd     = Command {cname = "seeR", cUser = Student, cDesc = "to give usage" , cOp = dummy, argc = 0}
-showTCmd    = Command {cname = "showT", cUser = Student, cDesc = "to give usage", cOp = dummy, argc = 0}
-showACmd    = Command {cname = "showA", cUser = Student, cDesc = "to give usage", cOp = dummy, argc = 0}
-usageICmd   = Command {cname = "usage", cUser = Instructor, cDesc = "to give usage", cOp = printUsage, argc = 0}
-chgstateCmd = Command {cname = "chgState", cUser = Instructor, cDesc = "to give usage", cOp = dummy, argc = 0}
-setupCmd    = Command {cname = "setUp", cUser = Instructor, cDesc = "to give usage" , cOp = dummy, argc = 0}
-checkTCmd   = Command {cname = "checkTCmd", cUser = Instructor, cDesc = "to give usage" , cOp = dummy, argc = 0}
-checkRCmd   = Command {cname = "checkRCmd", cUser = Instructor, cDesc = "to give usage" , cOp = dummy, argc = 0}
-combineTCmd = Command {cname = "combineT", cUser = Instructor, cDesc = "to give usage" , cOp = dummy, argc = 0}
-combineRCmd = Command {cname = "combineR", cUser = Instructor, cDesc = "to give usage" , cOp = dummy, argc = 0}
+usageSCmd   = Command {cname = "usage", cUser = Student, cDesc = "usage :  to give usage", cOp = printUsage, argc = 0}
+subTCmd     = Command {cname = "subT", cUser = Student, cDesc = "subT filename  :  to give usage" , cOp = twizzeHandler, 
+                          argc = 1}
+subRCmd     = Command {cname = "subR", cUser = Student, cDesc = "subR  :  to submit review" , cOp = submitReview, 
+                       argc = 1}
+seeRCmd     = Command {cname = "seeR", cUser = Student, cDesc = "seeR  :  to see review" , cOp = seeReview, argc = 0}
+showTCmd    = Command {cname = "showT", cUser = Student, cDesc = "showT  :  to see buddies twiz", cOp = showBuddyTwizze, argc = 0}
+showACmd    = Command {cname = "seeA", cUser = Student, cDesc = "to see assignment", cOp = seeAssignment, argc = 0}
+usageICmd   = Command {cname = "usage", cUser = Instructor, cDesc = "usage  :  to give usage", cOp = printUsage, argc = 0}
+chgstateCmd = Command {cname = "addHW", cUser = Instructor, cDesc = "add HW  :  to add homework", cOp = setUpHandler, argc = 5}
+setupCmd    = Command {cname = "setUpCourse", cUser = Instructor, cDesc = "setUpCourse (not implemented)  :  to set up a new course" , cOp = dummy,  argc = 0}
+checkTCmd   = Command {cname = "checkT", cUser = Instructor, cDesc = "checkT  :  to check homework" , cOp = checkTwizze , argc = 0}
+checkRCmd   = Command {cname = "checkR", cUser = Instructor, cDesc = "checkR  :  to check review" , cOp =  checkReview, argc = 0}
+combineTCmd = Command {cname = "combineT", cUser = Instructor, cDesc = "combineT  :  to report all twizes" , cOp = combineAllTwizze, argc = 0}
+combineRCmd = Command {cname = "combineR", cUser = Instructor, cDesc = "combineR  :  to report all reviews" , cOp = combineAllReview, argc = 0}
 
 commands :: [Command] 
 commands = [usageSCmd, subTCmd, subRCmd, seeRCmd, showTCmd, showACmd, usageICmd, chgstateCmd, setupCmd, checkTCmd, checkRCmd, combineTCmd, combineRCmd]
-calcPoint:: String -> Course ->  [Submission] -> Int
-calcPoint _ _ _=  undefined
+
+
+
 
 
 
@@ -143,15 +174,22 @@ main = do
 
 getOp :: String -> IO [Command] -> IO  Function 
 getOp cName cmds = do cmdList <- cmds
-                      return (head [cOp x | x <-cmdList , cname x == cName])
+                      return (head [cOp x| x <-cmdList , cname x == cName])
                       
+getArgNum :: String -> IO [Command] -> IO Int 
+getArgNum cName cmds = do cmdList <- cmds
+                          return (head [argc x| x <-cmdList , cname x == cName])
+
 
 execute :: [String] -> IO ()
 execute [] = putStrLn "Type \"usage\" for Command Usage"
 execute (cmd:args) = do  l <- availableCmdName
                          case (elem cmd l) of  
                            True ->  do function <- getOp cmd availablecommands
-                                       function args            
+                                       argnum <- getArgNum cmd availablecommands
+                                       if length args < argnum 
+                                         then putStrLn "Too few arguments"
+                                         else function args            
                            False -> case cmd of
                                         "quit"    -> exitSuccess 
                                         otherwise -> putStrLn "Wrong command, please try again"
@@ -160,14 +198,48 @@ execute (cmd:args) = do  l <- availableCmdName
 
 
 
---"26Jan2012-10:54AM"
-passDeadLine :: Time -> IO Bool
-passDeadLine dateString = do let deadline = readTime defaultTimeLocale "%d%b%Y-%l:%M%p" dateString :: UTCTime
-                             currentTime <- getCurrentTime --IO UTCTime
-                             let timeDiffInSeconds = floor (toRational (diffUTCTime deadline currentTime))
-                             if (timeDiffInSeconds + 25200) > 0
-                               then return False
-                               else return True
+configFile::String
+configFile = "cs583.cfg"
+
+configs :: IO Config
+configs = cfg
+--configs = loadConfig configFile
+
+
+loadConfig ::String ->  IO Config
+loadConfig cfgFileName  = do content <- readFile cfgFileName 
+                             let x = (read content) :: Config          
+                             return x
+
+
+
+
+passDeadLine :: String -> UTCTime ->  Bool
+passDeadLine dateString curTime  = do
+                           let deadline = readTime defaultTimeLocale "%d%b%Y-%l:%M%p" dateString :: UTCTime
+                           let timeDiffInSeconds = floor (toRational (diffUTCTime deadline curTime))
+                           if (timeDiffInSeconds + 25200) > 0
+                             then  False
+                             else  True
+
+                             
+openAssignments :: IO [Assignment]
+openAssignments = do c <- configs
+                     let as = getAssignments c
+                     currentTime <- getCurrentTime --IO UTCTime
+                     let k  = filter (\a -> not (passDeadLine (deadline a) currentTime)) as
+                     let k' = filter (\a ->  (passDeadLine  (startTime a) currentTime) ) k
+                     return k
+
+isTwizPhase :: IO Bool
+isTwizPhase = do as <- openAssignments
+                 return (or (map (\c -> assignmentType c == Twiz ) as))
+isReviewPhase :: IO Bool
+isReviewPhase = do as <- openAssignments
+                   return (or (map (\c -> assignmentType c == Review ) as))
+
+
+
 
 
 
@@ -179,39 +251,72 @@ setUpHandler args = do
   buildBuddies names
 
 
+
+{--
+data Assignment = Assignment {assignmentID  :: Int,
+                              assignmentType :: AssignmentType,
+                              deadline       :: Time,
+                              description    :: String,
+                              points :: Int} 
+                deriving (Show, Eq, Read)
+   
+--}
+
+
+  
+
+
+
 --first argument is deadline
 --second argument is twizze name
 createConfig :: [String] -> IO ()
-createConfig argus = do
+createConfig args = do
                         workingDir <- getWorkingDirectory
-                        outh <- openFile "config" AppendMode
-                        hPutStrLn outh "uploadTwizze" -- current state
-                        hPutStrLn outh (argus !! 0) -- deadline
-                        hPutStrLn outh (argus !! 1) -- twizze name
-                        hPutStrLn outh workingDir -- working directory
+                        let newAssignment = Assignment {    
+                              assignmentName = (args !! 0), 
+                              assignmentType = if (args !! 1) == "Twiz" then Twiz
+                                               else  Review,
+                              startTime = (args!! 2),
+                              deadline = (args !! 3),
+                              description = (args !! 4),
+                              points = read (args !! 5) :: Int}
+                                                                      
+                        cfg <- configs
+                        let as = getAssignments cfg
+                        let crs = getCourse cfg
+                        let newConfig = C crs (newAssignment:as) 
+                        outh <- openFile configFile WriteMode              
+                        hPutStrLn outh $ show newConfig
                         hClose outh
-                        setFileMode ("config") 0o664
+                        setFileMode (configFile) 0o664
                         setFileMode ("names") 0o664
 
 
 
 
-{--
 
 
+createDirs :: [Assignment] -> IO ()
+createDirs [] = return ()
+createDirs (x:xs) = do let aName = assignmentName x
+                       b <- System.Directory.doesDirectoryExist aName
+                       if not b then 
+                         do
+                          System.Directory.createDirectory aName -- create folder for current project
+                          setFileMode aName 0o751  
+                          names <- readName
+                          createFolders (aName ++ "/") names 0o753
+                          createDirs xs     
+                       else
+                          createDirs xs
+                  
 
-
-
---}
-{--
 
 createProject :: IO ()
 createProject = do
-                  configs <- readAllConfig
-                  System.Directory.createDirectory (configs !! 2)-- create folder for current project
-                  setFileMode (configs !! 2) 0o751
-                  names <- readName
-                  createFolders ((configs !! 2) ++ "/") names 0o753
+                  cfg <- configs
+                  let as = getAssignments cfg
+                  createDirs as
 
 
 createFolders :: String -> [String] -> FileMode -> IO ()
@@ -249,8 +354,9 @@ randPerm gen xs = let (n, newGen) = randomR (0, length xs - 1) gen
 
 readName :: IO [String]
 readName = do
-             configs <- readAllConfig
-             let path = (configs !! 3)
+             cfg <- configs
+             let crs = getCourse cfg
+             let path = (coursePath crs)
              content <- readFile (path ++ "/names")
              return . words $ content
 
@@ -265,33 +371,26 @@ writeBuddies outh (n:names)(sn:shuffledN) = do
     writeBuddies outh names shuffledN
 
 
+passDeadLine1 :: String -> IO Bool
+passDeadLine1 dateString = do
+                            let deadline = readTime defaultTimeLocale "%d%b%Y-%l:%M%p" dateString :: UTCTime
+                            currentTime <- getCurrentTime --IO UTCTime
+                            let timeDiffInSeconds = floor (toRational (diffUTCTime deadline currentTime))
+                            if (timeDiffInSeconds + 25200) > 0
+                            then return False
+                            else return True
 
 
 
 --client submit twizze, argu1 should be path
 twizzeHandler :: [String] -> IO ()
-twizzeHandler argus = do
-                        configs <- readAllConfig
-                        isInClass <- isRegistered
-                        if (not isInClass)
-                        then putStrLn "sorry, you can not submit twizze because you are not registed in this class."
-                        else do
-                               let currentState = (head configs)
-                               if(currentState /= "uploadTwizze")
-                               then putStrLn "sorry, you can not submit twizze at current phase"
-                               else do
-                                      let deadLine = (configs !! 1)
-                                      isPass <- passDeadLine deadLine
-                                      if(isPass)
-                                      then putStrLn "sorry, you can not submit twizze because deadline is passed"
-                                      else do
-                                             uid <- getUID
-                                             let twizzeName = (configs !! 2)
-                                             let path = (configs !! 3)
-                                             twizzeContent <- readFile (head argus)
-                                             appendFile (path ++ "/" ++ twizzeName ++ "/" ++ uid ++ "/twizze.hs") ("---homework from " ++ uid ++ "------------------\n" ++ twizzeContent)
-                                             setFileMode (path ++ "/" ++ twizzeName ++ "/" ++ uid ++ "/twizze.hs") 0o755
-                                             putStrLn "upload successfully"
+twizzeHandler argus = undefined
+{--  do cfg <- configs
+                         let crs = getCourse cfg
+                         let as  = getAssignments cfg
+                         isInClass <- isRegistered
+                         udefined
+ --}                        
 
 
 
@@ -308,16 +407,50 @@ isRegistered = do
 
 
 
+type Pos = (Int,Int)
+
+getCh :: IO Char
+getCh =  do hSetEcho stdin False
+            c <- getChar
+            hSetEcho stdin True
+            return c
+            
+
+{-- un-implemented GUI 
+cls :: IO ()
+cls =  putStr "\ESC[2J"
+goto :: Pos -> IO ()
+goto (x,y) =  putStr ("\ESC[" ++ show y ++ ";" ++ show x ++ "H")
+writeat :: Pos -> String -> IO ()
+writeat p xs =  do goto p
+                   putStrLn xs
 
 
 
---call system function
+
+
+processCh:: IO Char -> IO ()
+processCh ch = do c <- ch
+                  
+showMenu :: IO()
+showMenu = do as <- openAssignments
+              putStr $ show (length as) 
+              
+           -- seqn [putStrLn  x | (y,xs) <- zip [1..(length as)] as , let x = assignmentName xs]
+              cls
+              putStr "\x1b[31m"
+              System.Console.ANSI.Color Red
+              seqn [writeat (2,y) x | (y,xs) <- zip [1..(length as)] as , let x = assignmentName xs]
+           
+
+--}
 
 
 
 
-showBuddyTwizze :: IO ()
-showBuddyTwizze = do
+
+showBuddyTwizze :: [String]-> IO ()
+showBuddyTwizze _ = do
                     configs <- readAllConfig
                     isInClass <- isRegistered
                     if(not isInClass)
@@ -444,8 +577,8 @@ readAllConfig = do
                   return [state, deadline, twizzeName, workingDir]
 
 
-submitReview :: String -> IO ()
-submitReview filePath = do
+submitReview :: [String] -> IO ()
+submitReview (filePath:[]) = do
                           configs <- readAllConfig
                           isInClass <- isRegistered
                           if (not isInClass)
@@ -456,7 +589,7 @@ submitReview filePath = do
                                  then putStrLn "sorry, you can not submit review at current phase."
                                  else do
                                         let deadLine = (configs !! 1)
-                                        isPass <- passDeadLine deadLine
+                                        isPass <- passDeadLine1 deadLine
                                         if(isPass)
                                         then putStrLn "sorry, you have passed deadline."
                                         else do
@@ -473,8 +606,8 @@ submitReview filePath = do
 
 
 
-seeReview :: IO ()
-seeReview = do
+seeReview ::[String]-> IO ()
+seeReview _ = do
               configs <- readAllConfig
               isInClass <- isRegistered
               if (not isInClass)
@@ -497,8 +630,8 @@ seeReview = do
 
 
 
-checkTwizze :: IO ()
-checkTwizze = do
+checkTwizze ::[String]-> IO ()
+checkTwizze _ = do
                 isadmin <- isAdmin
                 if (not isadmin)
                 then putStrLn "sorry you are not allowed to take this step"
@@ -524,8 +657,8 @@ checkStudent (x:xs) = do
 
 
 
-checkReview :: IO ()
-checkReview = do
+checkReview :: [String] ->IO ()
+checkReview _ = do
                 isadmin <- isAdmin
                 if (not isadmin)
                 then putStrLn "sorry you are not allowed to take this step"
@@ -555,8 +688,8 @@ checkStudent_ (x:xs) = do
 
 
 
-combineAllTwizze :: IO ()
-combineAllTwizze = do
+combineAllTwizze :: [String] -> IO ()
+combineAllTwizze s = do
                      configs <- readAllConfig
                      let path = (configs !! 2) ++ "/"
                      outh <- openFile (path ++ "allTwizze") WriteMode
@@ -577,8 +710,8 @@ combineTwizze outh path (x:xs) = do
                                      combineTwizze outh path xs
 
 
-combineAllReview :: IO ()
-combineAllReview = do
+combineAllReview ::[String] -> IO ()
+combineAllReview _ = do
                      configs <- readAllConfig
                      let path = (configs !! 2) ++ "/"
                      outh <- openFile (path ++ "allReview") WriteMode
@@ -600,11 +733,10 @@ combineReview outh path (x:xs) = do
                                      hPutStrLn outh content
                                      combineReview outh path xs
 
-seeAssignment :: IO ()
-seeAssignment = do
+seeAssignment :: [String] -> IO ()
+seeAssignment _ = do
                   configs <- readAllConfig
                   let path = (configs !! 3)
                   let twizzeName = (configs !! 2)
                   content <- readFile (path ++ "/" ++ twizzeName ++ "/assignment")
                   putStrLn content
---}
