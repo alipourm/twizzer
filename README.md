@@ -1,9 +1,3 @@
-CS583 Functional Programming
-
-Team members:
-Amin Alipour, Qi Qi, Qingkai Lu
-
-
 Requirements:
 Operating System: Linux or Unix-like systems.
 Components: GHC, System.Random module.
@@ -81,17 +75,3 @@ This command is used to show current assignment.
 Functionality and scope of the project
 1, review is one on one review.
 2, If instructors do not have root acces on server, then all students need to make a symbolic link to the executable file in isntrutors directory.
-
-
-Planned but not implemented:
-1, Automatic mailing system.
-2, Multiple twizze homeworks running parallel
-3, Multiple buddy assignment
-
-
-Highlights:
-1, good type system.
-2, nice command parsing component.
-3, use of higher-order function.
-4, use of IO monad.
-5, simple buddy assignment.
