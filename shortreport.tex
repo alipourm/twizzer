@@ -1,0 +1,28 @@
+\documentclass{article}
+\title{CS 583 Project:\\Twizzer}
+\date{}
+\author{Amin Alipour, Qi Qi,and Qingkai Lu}
+\begin{document}
+\maketitle
+
+
+\section{Highlights}
+\begin{enumerate}
+\item Easily extensible, by defining a new  \texttt{Command} and  adding it to  \texttt{commands} list.
+\item Simple and reliable  authentication  scheme by using underlying unix system.e.g. \texttt{availablecommands}.
+\item Use of monadic computations such as in \texttt{seqn}, \texttt{printUsage}.
+\item Extensive use of list operations such as \texttt{map} and \texttt{filter}. 
+\item Simple buddy assignment.
+\item Use of read and show functions to write  and read  data types from/to files.
+\end{enumerate}
+
+
+\section{Planned but not implemented}
+\begin{enumerate}
+\item Automatic e-mailing system. The system can use e-mail libraries to send e-mail to studnets.
+\item Multiple twiz homeworks running parallel. The reafactored version (twizzer2.hs) has implementation for it.
+\item GUI. We could add console gui for it that can reduce the need for typing in commands.
+\item Under current assumption,  the system handles a single course. It can be extended to support 
+\item multiple courses using \texttt{Course} data type.
+\end{enumerate}
+\end{document}
